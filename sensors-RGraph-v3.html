@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Midterm project of Embedded system : Maze game</title>
+    <script src="RGraph/libraries/RGraph.common.core.js" ></script>
+    <script src="RGraph/libraries/RGraph.common.context.js" ></script>
+    <script src="RGraph/libraries/RGraph.line.js" ></script>
+</head>
+<body>
+    <h2>Midterm project of Embedded system : Maze game</h2>
+    <p>
+        Welcome!<br />  
+	If you are ready , please press any key to start !<br /> 
+	Note : Start point : blue ; End point : green.<br />     
+    </p>
+    <canvas width="616" height="556" id="mazecanvas">Can't load the maze game, because your browser doesn't support HTML5.</canvas>
+    <noscript>JavaScript is not enabled. To play the game, you should enable it.</noscript>
+    <script>
+        // Maze game created by ProgramFOX; http://www.codeproject.com/Members/ProgramFOX
+        // Licensed under CPOL: http://www.codeproject.com/info/cpol10.aspx
+
+        // 425 (X), 3 (Y) RECTANGLE
+        // 542 (center X), 122 (center Y) CIRCLE
+        var canvas = document.getElementById("mazecanvas");
+        var context = canvas.getContext("2d");
+        var currRectX = 504;
+        var currRectY = 50;
+        var mazeWidth = 556;
+        var mazeHeight = 556;
+        var intervalVar;
+
+//codes from JJL
+
+    var batch=1;
+    var samples=batch;
+    var timecycle=0;
+    var requestCounter = 0;
+    var interval = 0;
+    var nodata = 0;
+    var serverAddressBase = "xdata.";
+    var serverAddress = "xdata.0"; //default file to get from server
+
+    d1 = [];
+    
+    // Pre-pad the arrays with # of samples null values
+    for (var i=0; i< samples; ++i) {
+        d1.push(null);
+    }
+
+    var xmlHttp = createXmlHttpRequestObject();
+
+
+    // creates XMLHttpRequest Instance
+    function createXmlHttpRequestObject(){
+
+      // will store XMLHttpRequest object
+      // at here
+      var xmlHttp;
+
+      // works all exceprt IE6 and older  
+      try
+      {
+      
+	// try to create XMLHttpRequest object
+	xmlHttp = new XMLHttpRequest();    
+      }
+      catch(e)
+      {
+	// assume IE 6 or older
+	try
+	{
+	  xmlHttp = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+	catch(e){ }
+      }
+      
+      // return object or display error
+      if (!xmlHttp)
+	alert("Error creating the XMLHttpRequest Object");
+      else
+	return xmlHttp;
+    }
+
+    function GetJsonData()
+    {
+      //debug
+      //myDiv = document.getElementById("myDivElement"); 
+      //myDiv.innerHTML += "Getting Json Data<br>"; 
+      nodata=0;
+
+      if(xmlHttp)
+      {
+	try
+	{
+	  xmlHttp.open("Get", serverAddress, false);
+	  //xmlHttp.onreadystatechange = handleRequestStateChange; //We use synchronous data transfer, so we don't need this here
+	  xmlHttp.send(null);
+	  try{
+		  handleJsonData();
+	  }
+	  catch(err){
+	     if(err=="no data"){
+	          //alert('Waiting '+serverAddressBase+requestCounter);
+		  //setTimeout(GetJsonData,10); //Try again 10ms later
+		  nodata=1; //record status
+	     }
+	  }
+	}
+	catch(e)
+	{
+//	  alert("Can't connect to server\n" + e.toString());
+	}
+      }
+    }
+
+    function handleRequestStateChange()
+    {
+      if (xmlHttp.readyState == 4)
+      {
+	if(xmlHttp.status == 200|| xmlHttp.status == 0)
+	    {
+	      try
+	      {
+		handleJsonData();
+	      }
+	      catch(e)
+	      {
+		alert("Error reading the response: " + e.toString());
+	      }
+	    }
+	    else
+	    {
+	      alert("Problem retrieving data:\n" + xmlHttp.statusText);
+	    }
+      
+      
+      }
+      
+    }
+
+    function handleJsonData()
+    {
+      var result = xmlHttp.responseText;
+      if(result==''){
+        //alert('No data from xmlhttprequest object!');
+	throw "no data";
+      }
+      else{
+	      try{
+		      var jobject = eval("(" + result + ")");
+			  var i;
+		      if(jobject.time>timecycle){
+			      timecycle=jobject.time;
+			      if(jobject.xarray.length==0){
+					throw "no data";
+			      }
+			      else{
+				  	for(i=0; i<jobject.xarray.length; i++)
+				  		d1[i]=jobject.xarray[i][0];
+			      }
+		      }
+		      else{
+			//Do nothing
+		      }
+	      }
+	      catch(e){
+		//Retry; ignore all json errors
+	      }
+      }
+    }
+
+//codes from JJL
+
+        function drawMazeAndRectangle(rectX, rectY) {
+            makeWhite(0, 0, canvas.width, canvas.height);
+            var mazeImg = new Image();
+            mazeImg.onload = function () {
+                context.drawImage(mazeImg, 0, 0);
+                drawRectangle(rectX, rectY, "#0000FF");
+                context.beginPath();
+                context.arc(450, 320, 7, 0, 2 * Math.PI, false);
+                context.closePath();
+                context.fillStyle = '#00FF00';
+                context.fill();
+            };
+            mazeImg.src = "maze2.gif";
+        }
+        function drawRectangle(x, y, style) {
+            makeWhite(currRectX, currRectY, 15, 15);
+            currRectX = x;
+            currRectY = y;
+            context.beginPath();
+            context.rect(x, y, 15, 15);
+            context.closePath();
+            context.fillStyle = style;
+            context.fill();
+        }
+        function moveRect(e) { 
+            var newX;
+            var newY;
+            var movingAllowed;
+
+            ///////////////////////////////////////////////// 
+
+	    while(1){
+
+	    //Prepare new file name to get from
+	    serverAddress=serverAddressBase+requestCounter;
+	    //alert('Debug'+serverAddress);
+            //Save data from json object to the arrays
+	    GetJsonData();
+	    //document.body.innerHTML = "";
+	    //document.write(d1);
+            if(d1 ==0 || d1 == 1){// W key
+                    newX = currRectX;
+                    newY = currRectY - 3;}
+            else if(d1 == 2 || d1 == 3){// A key
+                    newX = currRectX - 3;
+                    newY = currRectY;}
+            else if(d1 == 4 || d1 == 5){// S key
+                    newX = currRectX;
+                    newY = currRectY + 3;}
+            else if(d1 == 6 || d1 == 7){// D key
+                    newX = currRectX + 3;
+                    newY = currRectY;}
+            else{
+		    newX = currRectX;
+		    newY = currRectY;}
+
+            if(!nodata){ //Keep the file counter
+		requestCounter=(requestCounter+1)%2; //cycle counter
+		//alert('Counter changed: '+requestCounter);
+	       }
+	    else{
+		//alert('Counter keeped: '+requestCounter);
+	        }
+	    setTimeout(moveRect,1000);
+
+	    //////////////////////////////////////////////////	
+
+            movingAllowed = canMoveTo(newX, newY);
+            if (movingAllowed === 1) {      // 1 means 'the rectangle can move'
+                drawRectangle(newX, newY, "#0000FF");
+                currRectX = newX;
+                currRectY = newY;
+            }
+            else if (movingAllowed === 2) { // 2 means 'the rectangle reached the end point'
+                clearInterval(intervalVar);
+                makeWhite(0, 0, canvas.width, canvas.height);
+                context.font = "40px Arial";
+                context.fillStyle = "blue";
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                context.fillText("Congratulations!", canvas.width / 2, canvas.height / 2);
+                window.removeEventListener("keydown", moveRect, true);
+            }
+
+	if(d1 == 99) break; 
+	}
+        }
+        function canMoveTo(destX, destY) {
+            var imgData = context.getImageData(destX, destY, 15, 15);
+            var data = imgData.data;
+            var canMove = 1; // 1 means: the rectangle can move
+            if (destX >= 0 && destX <= mazeWidth - 15 && destY >= 0 && destY <= mazeHeight - 15) {
+                for (var i = 0; i < 4 * 15 * 15; i += 4) {
+                    if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) { // black
+                        canMove = 0; // 0 means: the rectangle can't move
+                        break;
+                    }
+                    else if (data[i] === 0 && data[i + 1] === 255 && data[i + 2] === 0) { // #00FF00
+                        canMove = 2; // 2 means: the end point is reached
+                        break;
+                    }
+                }
+            }
+            else {
+                canMove = 0;
+            }
+            return canMove;
+        }
+        function createTimer(seconds) {
+            intervalVar = setInterval(function () {
+                makeWhite(mazeWidth, 0, canvas.width - mazeWidth, canvas.height);
+                if (seconds === 0) {
+                    clearInterval(intervalVar);
+                    window.removeEventListener("keydown", moveRect, true);
+                    makeWhite(0, 0, canvas.width, canvas.height);
+                    context.font = "40px Arial";
+                    context.fillStyle = "red";
+                    context.textAlign = "center";
+                    context.textBaseline = "middle";
+                    context.fillText("Time's up!", canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                context.font = "20px Arial";
+                if (seconds <= 10 && seconds > 5) {
+                    context.fillStyle = "orangered";
+                }
+                else if (seconds <= 5) {
+                    context.fillStyle = "red";
+                }
+                else {
+                    context.fillStyle = "green";
+                }
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                var minutes = Math.floor(seconds / 60);
+                var secondsToShow = (seconds - minutes * 60).toString();
+                if (secondsToShow.length === 1) {
+                    secondsToShow = "0" + secondsToShow; // if the number of seconds is '5' for example, make sure that it is shown as '05'
+                }
+                context.fillText(minutes.toString() + ":" + secondsToShow, mazeWidth + 30, canvas.height / 2);
+                seconds--;
+            }, 1000);
+        }
+        function makeWhite(x, y, w, h) {
+            context.beginPath();
+            context.rect(x, y, w, h);
+            context.closePath();
+            context.fillStyle = "white";
+            context.fill();
+        }
+        drawMazeAndRectangle(504, 50);
+        window.addEventListener("keydown", moveRect, true);
+        //createTimer(12000); 
+    </script>
+<P> 
+This game is created by ProgramFOX<br />
+</p>
+</body>
+</html>
